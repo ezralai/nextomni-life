@@ -1,0 +1,32 @@
+{
+  "name": "nextomni-life",
+  "version": "2.0.0",
+  "private": true,
+  "description": "NextOmni Life - The Intelligent Operating System for Human Flourishing",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "powershell -ExecutionPolicy Bypass -File ./scripts/dev.ps1",
+    "dev:web": "npm run --prefix apps/web dev",
+    "dev:ai": "cd apps/ai-engine && uvicorn main:app --reload --port 8000",
+    "build": "npm run --prefix apps/web build",
+    "lint": "npm run --prefix apps/web lint",
+    "test": "python apps/ai-engine/tests/test_life_router.py",
+    "db:generate": "npm run --prefix packages/database generate",
+    "db:push": "npm run --prefix packages/database push"
+  },
+  "keywords": [
+    "nextomni-life",
+    "life-os",
+    "personal-operating-system",
+    "habits",
+    "deep-work",
+    "circadian-rhythm",
+    "journaling",
+    "okrs"
+  ],
+  "author": "Ezra Lai",
+  "license": "MIT"
+}

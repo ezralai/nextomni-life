@@ -1,0 +1,325 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// 1. Identity & Access Management
+// ==========================================
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String
+  role          String    @default("student") // student, educator, admin
+  avatarUrl     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  courses       Course[]
+  tasks         Task[]
+  schedules     Schedule[]
+  accounts      FinancialAccount[]
+  transactions  FinancialTransaction[]
+  habits        Habit[]
+  habitLogs     HabitLog[]
+  journals      Journal[]
+  journalEntries JournalEntry[]
+  focusSessions FocusSession[]
+  lifeGoals     LifeGoal[]
+  energyLogs    EnergyLog[]
+  studyTips     StudyTip[]
+  interactions  UserTipInteraction[]
+  aiConfig      UserAiConfig?
+
+  @@index([role])
+}
+
+model UserAiConfig {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  encryptedGeminiKey String?
+  encryptedOpenRouterKey String?
+  preferredModel    String    @default("gemini-2.5-flash")
+  temperature       Float     @default(0.7)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+// ==========================================
+// 2. NextOmni Study Suite
+// ==========================================
+model Course {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseName    String
+  courseCode    String?
+  semester      String?
+  credits       Int       @default(3)
+  targetGrade   Float     @default(80.0)
+  actualGrade   String?
+  isCompleted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tasks         Task[]
+
+  @@index([userId, isCompleted])
+}
+
+model Task {
+  id            String    @id @default(uuid())
+  courseId      String
+  course        Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskName      String
+  dueDate       DateTime?
+  weightage     Float     @default(0.0)
+  score         Float?
+  isCompleted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, dueDate])
+  @@index([courseId, isCompleted])
+}
+
+model Schedule {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  dayOfWeek     String    // Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+  startTime     String    // HH:mm (e.g. 09:00)
+  endTime       String    // HH:mm (e.g. 11:00)
+  location      String?
+  color         String    @default("#6366f1")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, dayOfWeek])
+}
+
+// ==========================================
+// 3. NextOmni Finance Suite
+// ==========================================
+model FinancialAccount {
+  id                  String    @id @default(uuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutionName     String    // Touch n Go, Maybank, CIMB, myASNB, Moomoo
+  accountCategory     String    // ewallet, bank_savings, investment_unit_trust, investment_stocks, credit_debt
+  accountNickname     String
+  accountNumberMasked String?
+  currentBalance      Decimal   @default(0.00) @db.Decimal(14, 2)
+  currency            String    @default("MYR")
+  lastSyncedAt        DateTime  @default(now())
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  transactions        FinancialTransaction[]
+
+  @@index([userId, accountCategory])
+}
+
+model FinancialTransaction {
+  id                String            @id @default(uuid())
+  accountId         String
+  account           FinancialAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionDate   DateTime          @default(now())
+  description       String
+  category          String            @default("General") // Food & Dining, Transport, Groceries, Dividends, Salary
+  amount            Decimal           @db.Decimal(12, 2)
+  transactionType   String            @default("expense") // expense, income, transfer
+  merchant          String?
+  referenceId       String?
+  createdAt         DateTime          @default(now())
+
+  @@index([userId, transactionDate])
+  @@index([accountId, transactionDate])
+}
+
+// ==========================================
+// 4. NextOmni Intel & Study Tips Suite
+// ==========================================
+model StudyTip {
+  id              String    @id @default(uuid())
+  userId          String?
+  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tipDate         DateTime  @default(now())
+  category        String    @default("active_recall") // active_recall, pomodoro, retention, wellbeing
+  title           String
+  content         String    @db.Text
+  actionItem      String
+  sourceReference String?
+  isAiGenerated   Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  interactions    UserTipInteraction[]
+
+  @@index([userId, tipDate])
+  @@index([category])
+}
+
+model UserTipInteraction {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tipId         String
+  tip           StudyTip  @relation(fields: [tipId], references: [id], onDelete: Cascade)
+  isBookmarked  Boolean   @default(false)
+  reaction      String?   // helpful, unhelpful, neutral
+  interactedAt  DateTime  @default(now())
+
+  @@unique([userId, tipId])
+  @@index([userId, isBookmarked])
+}
+
+// ==========================================
+// 5. NextOmni Life & Wellness Suite
+// ==========================================
+model Habit {
+  id                String      @id @default(uuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title             String
+  description       String?
+  microCue          String?     // e.g. "After I pour my morning coffee..."
+  category          String      @default("general") // health, learning, mindfulness, fitness, craft
+  frequency         String      @default("daily")   // daily, weekdays, weekly
+  targetDaysPerWeek Int         @default(7)
+  targetMinutes     Int         @default(15)
+  streakCount       Int         @default(0)
+  icon              String      @default("check-circle")
+  color             String      @default("#10b981")
+  preferredTimeOfDay String     @default("any")     // morning, afternoon, evening, any
+  isArchived        Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  logs              HabitLog[]
+
+  @@index([userId, category])
+}
+
+model HabitLog {
+  id            String    @id @default(uuid())
+  habitId       String
+  habit         Habit     @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logDate       DateTime  @default(now())
+  isCompleted   Boolean   @default(true)
+  notes         String?
+  createdAt     DateTime  @default(now())
+
+  @@unique([habitId, logDate])
+  @@index([userId, logDate])
+}
+
+model FocusSession {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode              String    @default("pomodoro") // pomodoro, ultradian, flow
+  durationMinutes   Int       @default(25)
+  completedMinutes  Int       @default(25)
+  soundscapeType    String    @default("binaural_gamma") // binaural_gamma, rain, white_noise, cafe, none
+  notes             String?
+  courseId          String?
+  taskId            String?
+  startedAt         DateTime  @default(now())
+  completedAt       DateTime?
+  isCompleted       Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+
+  @@index([userId, startedAt])
+}
+
+model Journal {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entryDate     DateTime  @default(now())
+  moodScore     Int       @default(8) // 1-10
+  energyLevel   Int       @default(7) // 1-10
+  sleepHours    Float     @default(7.5)
+  title         String?
+  content       String    @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, entryDate])
+}
+
+model JournalEntry {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entryDate         DateTime  @default(now())
+  morningIntentions Json?     // Array of 3 needle movers
+  eveningGratitude  Json?     // Array of 3 wins & lessons
+  moodScore         Int       @default(8) // 1-10
+  energyLevel       Int       @default(7) // 1-10
+  sleepHours        Float     @default(7.5)
+  sleepQuality      Int       @default(4) // 1-5 stars
+  title             String?
+  content           String?   @db.Text
+  aiSentiment       String?   // positive, reflective, stressed, focused
+  aiKeyInsights     String?   @db.Text
+  isVaultLocked     Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId, entryDate])
+}
+
+model LifeGoal {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId        String?
+  title           String
+  dimension       String    @default("learning") // health, career, finance, relationships, learning
+  level           String    @default("objective") // vision, objective, key_result, action
+  targetValue     Float     @default(100.0)
+  currentValue    Float     @default(0.0)
+  unit            String    @default("%")
+  progressPercent Float     @default(0.0)
+  targetDate      DateTime?
+  isCompleted     Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, dimension])
+  @@index([userId, level])
+}
+
+model EnergyLog {
+  id                     String    @id @default(uuid())
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logDate                DateTime  @default(now())
+  morningSunlightMinutes Int       @default(20)
+  peakEnergySlot         String    @default("morning") // morning, afternoon, evening
+  sleepDurationHours     Float     @default(7.5)
+  sleepQuality           Int       @default(4) // 1-5
+  readinessScore         Int       @default(85) // 1-100
+  caffeineCutoffFollowed Boolean   @default(true)
+  windDownCompleted      Boolean   @default(true)
+  createdAt              DateTime  @default(now())
+
+  @@unique([userId, logDate])
+  @@index([userId, logDate])
+}
