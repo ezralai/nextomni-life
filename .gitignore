@@ -9,6 +9,7 @@ __pycache__/
 apps/web/.next/
 apps/web/out/
 apps/web/build/
+*.tsbuildinfo
 
 # Environment files
 .env
