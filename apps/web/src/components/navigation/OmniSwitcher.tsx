@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import Link from 'next/navigation';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   GraduationCap, 
@@ -124,7 +124,7 @@ export function OmniSwitcher() {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
-                <a
+                <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
@@ -151,7 +151,7 @@ export function OmniSwitcher() {
                     </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0 mt-3" />
-                </a>
+                </Link>
               );
             })}
           </div>

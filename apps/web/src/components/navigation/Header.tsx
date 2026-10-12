@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { OmniSwitcher } from './OmniSwitcher';
 import { CommandPalette } from './CommandPalette';
 import { 
@@ -82,7 +83,7 @@ export function Header() {
               <Menu className="h-5 w-5" />
             </button>
 
-            <a href="/life" className="flex items-center gap-2.5 group">
+            <Link href="/life" className="flex items-center gap-2.5 group">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-teal-600 to-indigo-600 text-white font-bold shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
                 🌿
               </div>
@@ -99,7 +100,7 @@ export function Header() {
                   The Intelligent Operating System for Human Flourishing
                 </p>
               </div>
-            </a>
+            </Link>
 
             <div className="hidden lg:flex items-center gap-2 pl-4 border-l border-white/[0.08] text-xs text-slate-400 font-mono">
               <Activity className="h-3.5 w-3.5 text-emerald-400" />
@@ -175,7 +176,7 @@ export function Header() {
                 {MOBILE_NAV_ITEMS.map((item) => {
                   const Icon = item.icon;
                   return (
-                    <a
+                    <Link
                       key={item.href}
                       href={item.href}
                       onClick={() => setIsMobileDrawerOpen(false)}
@@ -195,7 +196,7 @@ export function Header() {
                         </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-white transition-colors" />
-                    </a>
+                    </Link>
                   );
                 })}
               </div>
