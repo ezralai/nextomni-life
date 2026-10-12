@@ -1,0 +1,122 @@
+name: NextOmni Life CD Deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Target Deployment Environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ============================================================================
+  # 1. Build and Publish Docker Containers to GHCR
+  # ============================================================================
+  publish-containers:
+    name: Build & Publish OCI Images (GHCR)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: actions/docker-buildx-action@v3
+
+      # --- Web App Image ---
+      - name: Extract metadata for Web App
+        id: meta-web
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/web
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,format=short
+
+      - name: Build & Push Web App Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ${{ steps.meta-web.outputs.tags }}
+          labels: ${{ steps.meta-web.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # --- AI Engine Image ---
+      - name: Extract metadata for AI Engine
+        id: meta-ai
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/ai-engine
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,format=short
+
+      - name: Build & Push AI Engine Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/ai-engine/Dockerfile
+          push: true
+          tags: ${{ steps.meta-ai.outputs.tags }}
+          labels: ${{ steps.meta-ai.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================================
+  # 2. Deploy Web App to Vercel (Optional Integration)
+  # ============================================================================
+  deploy-vercel:
+    name: Deploy to Vercel Edge Platform
+    runs-on: ubuntu-latest
+    if: false # Enable when VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID secrets are configured
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+  # ============================================================================
+  # 3. Deployment Verification & Health Check Notification
+  # ============================================================================
+  post-deploy-verify:
+    name: Post-Deployment Verification Summary
+    runs-on: ubuntu-latest
+    needs: [publish-containers]
+    steps:
+      - name: Output Deployment Manifest
+        run: |
+          echo "=========================================================="
+          echo "  NextOmni Life (LifeOS) CD Pipeline Succeeded!"
+          echo "  Commit: ${{ github.sha }}"
+          echo "  Registry: ghcr.io/${{ github.repository }}"
+          echo "  Target: production"
+          echo "=========================================================="

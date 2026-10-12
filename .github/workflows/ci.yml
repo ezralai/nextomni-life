@@ -1,0 +1,129 @@
+name: NextOmni Life CI Pipeline
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # 1. Database Schema & Prisma Client Validation
+  # ============================================================================
+  prisma-validate:
+    name: Database Schema & Prisma Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Validate Prisma Schema
+        run: npx prisma validate --schema packages/database/prisma/schema.prisma
+
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema packages/database/prisma/schema.prisma
+
+  # ============================================================================
+  # 2. Next.js Web Application (Typecheck, Lint & Build)
+  # ============================================================================
+  web-ci:
+    name: Web App Quality & Production Build
+    runs-on: ubuntu-latest
+    needs: [prisma-validate]
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Web Dependencies
+        run: npm ci || npm install
+
+      - name: TypeScript Type Checking (Apps & Packages)
+        run: npm run lint
+
+      - name: Next.js Production Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NODE_ENV: production
+          NEXT_PUBLIC_APP_NAME: "NextOmni Life"
+          NEXT_PUBLIC_APP_TAGLINE: "The Intelligent Operating System for Human Flourishing"
+          NEXT_PUBLIC_AI_ENGINE_URL: "http://localhost:8000"
+
+  # ============================================================================
+  # 3. FastAPI Neural AI Engine (Unit Tests & Quality)
+  # ============================================================================
+  ai-engine-ci:
+    name: AI Engine Microservice Test Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r apps/ai-engine/requirements.txt
+          pip install httpx
+
+      - name: Run Life Router Unit Tests
+        run: |
+          python apps/ai-engine/tests/test_life_router.py
+
+  # ============================================================================
+  # 4. Container Build Dry-Run (Docker Verification)
+  # ============================================================================
+  docker-smoke-test:
+    name: Docker Container Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: actions/docker-buildx-action@v3
+
+      - name: Validate Web Dockerfile
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: false
+          tags: nextomni-life-web:test
+          outputs: type=cacheonly
+
+      - name: Validate AI Engine Dockerfile
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/ai-engine/Dockerfile
+          push: false
+          tags: nextomni-life-ai:test
+          outputs: type=cacheonly

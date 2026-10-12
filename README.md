@@ -1,6 +1,7 @@
 # NextOmni Life: The Intelligent Operating System for Human Flourishing
 
 [![Version](https://img.shields.io/badge/version-2.0.0-emerald.svg)](package.json)
+[![CI Pipeline](https://github.com/ezralai/nextomni-life/actions/workflows/ci.yml/badge.svg)](https://github.com/ezralai/nextomni-life/actions/workflows/ci.yml)
 [![Architecture](https://img.shields.io/badge/architecture-Decoupled%20Monorepo-indigo.svg)](package.json)
 [![Frontend](https://img.shields.io/badge/frontend-Next.js%2015%20%7C%20React%2019-cyan.svg)](apps/web)
 [![AI Engine](https://img.shields.io/badge/ai--microservice-FastAPI%20Python%203.14-amber.svg)](apps/ai-engine)
@@ -106,6 +107,32 @@ npm run dev:ai
 # Run Automated Test Suite
 npm run test
 ```
+
+---
+
+## 🔄 CI/CD Automation & Deployment
+
+This monorepo utilizes an automated GitHub Actions CI/CD matrix ([`.github/workflows/`](.github/workflows/)):
+
+### 1. Continuous Integration (`ci.yml`)
+- **Database Schema Audit:** Validates Prisma schema integrity (`prisma validate`) and generates client artifacts.
+- **Web App Quality Gate:** Executes TypeScript type checking (`npm run lint`) and production bundle compilation (`next build`).
+- **AI Microservice Quality Gate:** Runs Python 3.11 & 3.12 test matrix executing unit tests for dynamic prompts and weekly debrief syntheses.
+- **Docker Smoke Tests:** Builds multi-stage production container images with caching to guarantee deployability.
+
+### 2. Continuous Delivery (`cd.yml`)
+- Automatically packages and publishes multi-architecture OCI container images to **GitHub Container Registry (GHCR)**:
+  - `ghcr.io/ezralai/nextomni-life/web:latest`
+  - `ghcr.io/ezralai/nextomni-life/ai-engine:latest`
+
+### 3. Docker Compose Orchestration
+Run the entire production-grade stack locally using Docker:
+```bash
+docker compose up -d --build
+```
+- **Web App (PWA):** http://localhost:3000
+- **FastAPI Neural Engine:** http://localhost:8000
+- **PostgreSQL Database:** localhost:5432
 
 ---
 

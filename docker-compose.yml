@@ -1,0 +1,58 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: nextomni-life-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_APP_NAME=NextOmni Life
+      - NEXT_PUBLIC_APP_TAGLINE=The Intelligent Operating System for Human Flourishing
+      - NEXT_PUBLIC_AI_ENGINE_URL=http://ai-engine:8000
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/nextomni?schema=public
+    depends_on:
+      - ai-engine
+      - postgres
+    networks:
+      - nextomni-network
+
+  ai-engine:
+    build:
+      context: .
+      dockerfile: apps/ai-engine/Dockerfile
+    container_name: nextomni-life-ai
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - AI_ENGINE_PORT=8000
+      - AI_ENGINE_HOST=0.0.0.0
+      - CORS_ORIGINS=http://localhost:3000,http://web:3000
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    networks:
+      - nextomni-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: nextomni-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: nextomni
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - nextomni-network
+
+volumes:
+  postgres_data:
+
+networks:
+  nextomni-network:
+    driver: bridge
