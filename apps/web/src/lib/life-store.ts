@@ -400,5 +400,40 @@ export const LifeStore = {
   saveDebrief: (debrief: LifeDebriefResponse) => {
     if (typeof window === 'undefined') return;
     localStorage.setItem(STORAGE_KEYS.DEBRIEF, JSON.stringify(debrief));
+  },
+
+  deleteHabit: (id: string): HabitItem[] => {
+    const list = LifeStore.getHabits().filter(h => h.id !== id);
+    LifeStore.saveHabits(list);
+    return list;
+  },
+
+  deleteOkr: (id: string): LifeGoalItem[] => {
+    const list = LifeStore.getOkrs().filter(o => o.id !== id);
+    LifeStore.saveOkrs(list);
+    return list;
+  },
+
+  updateOkr: (id: string, updates: Partial<LifeGoalItem>): LifeGoalItem[] => {
+    const list = LifeStore.getOkrs().map(o => o.id === id ? { ...o, ...updates } : o);
+    LifeStore.saveOkrs(list);
+    return list;
+  },
+
+  deleteFocusSession: (id: string): FocusSessionItem[] => {
+    const list = LifeStore.getFocusSessions().filter(s => s.id !== id);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify(list));
+    }
+    return list;
+  },
+
+  clearFocusSessions: (): FocusSessionItem[] => {
+    const list: FocusSessionItem[] = [];
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify(list));
+    }
+    return list;
   }
 };
+

@@ -78,8 +78,23 @@ export default function NextOmniLifePage() {
     setHabits(updated);
   }
 
+  function handleDeleteHabit(id: string) {
+    const updated = LifeStore.deleteHabit(id);
+    setHabits(updated);
+  }
+
   function handleLogFocusSession(session: FocusSessionItem) {
     const updated = LifeStore.addFocusSession(session);
+    setFocusSessions(updated);
+  }
+
+  function handleDeleteFocusSession(id: string) {
+    const updated = LifeStore.deleteFocusSession(id);
+    setFocusSessions(updated);
+  }
+
+  function handleClearFocusSessions() {
+    const updated = LifeStore.clearFocusSessions();
     setFocusSessions(updated);
   }
 
@@ -104,8 +119,13 @@ export default function NextOmniLifePage() {
     setOkrs(updated);
   }
 
+  function handleDeleteOkr(id: string) {
+    const updated = LifeStore.deleteOkr(id);
+    setOkrs(updated);
+  }
+
   function handleUpdateOkrProgress(id: string, newProgress: number) {
-    const updated = okrs.map(o => o.id === id ? { ...o, progressPercent: newProgress } : o);
+    const updated = okrs.map(o => o.id === id ? { ...o, progressPercent: newProgress, isCompleted: newProgress >= 100 } : o);
     LifeStore.saveOkrs(updated);
     setOkrs(updated);
   }
@@ -212,6 +232,7 @@ export default function NextOmniLifePage() {
             habits={habits}
             onToggleHabit={handleToggleHabit}
             onAddHabit={handleAddHabit}
+            onDeleteHabit={handleDeleteHabit}
           />
         </div>
       )}
@@ -220,6 +241,8 @@ export default function NextOmniLifePage() {
         <FocusFlowEngine
           sessions={focusSessions}
           onLogSession={handleLogFocusSession}
+          onDeleteSession={handleDeleteFocusSession}
+          onClearSessions={handleClearFocusSessions}
         />
       )}
 
@@ -244,6 +267,7 @@ export default function NextOmniLifePage() {
           okrs={okrs}
           onAddOkr={handleAddOkr}
           onUpdateOkrProgress={handleUpdateOkrProgress}
+          onDeleteOkr={handleDeleteOkr}
         />
       )}
     </div>

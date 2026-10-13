@@ -63,7 +63,8 @@ export async function POST(req: Request) {
         ]
       }
     });
-  } catch (error: any) {
-    return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ status: 'error', message }, { status: 500 });
   }
 }

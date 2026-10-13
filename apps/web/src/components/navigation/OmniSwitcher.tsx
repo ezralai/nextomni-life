@@ -11,7 +11,8 @@ import {
   LayoutGrid, 
   ExternalLink,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  LucideIcon
 } from 'lucide-react';
 
 interface SuiteItem {
@@ -19,7 +20,7 @@ interface SuiteItem {
   suite: string;
   description: string;
   href: string;
-  icon: any;
+  icon: LucideIcon;
   color: string;
   badge: string;
 }

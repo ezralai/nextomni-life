@@ -73,7 +73,8 @@ export async function POST(req: Request) {
       message: 'Course / Schedule updated successfully.',
       data: body
     }, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ status: 'error', message: err.message }, { status: 400 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ status: 'error', message }, { status: 400 });
   }
 }

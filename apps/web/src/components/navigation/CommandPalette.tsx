@@ -9,7 +9,8 @@ import {
   HeartPulse, 
   ArrowRight,
   Command,
-  FileText
+  FileText,
+  LucideIcon
 } from 'lucide-react';
 
 interface PaletteItem {
@@ -17,7 +18,7 @@ interface PaletteItem {
   title: string;
   category: string;
   href: string;
-  icon: any;
+  icon: LucideIcon;
 }
 
 const ITEMS: PaletteItem[] = [

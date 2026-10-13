@@ -13,16 +13,19 @@ import {
   Moon, 
   Sunset, 
   Compass,
-  X
+  X,
+  Trash2,
+  Award
 } from 'lucide-react';
 
 interface HabitMatrixProps {
   habits: HabitItem[];
   onToggleHabit: (id: string) => void;
   onAddHabit: (newHabit: HabitItem) => void;
+  onDeleteHabit?: (id: string) => void;
 }
 
-export function HabitMatrix({ habits, onToggleHabit, onAddHabit }: HabitMatrixProps) {
+export function HabitMatrix({ habits, onToggleHabit, onAddHabit, onDeleteHabit }: HabitMatrixProps) {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterTime, setFilterTime] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -31,10 +34,10 @@ export function HabitMatrix({ habits, onToggleHabit, onAddHabit }: HabitMatrixPr
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newMicroCue, setNewMicroCue] = useState('');
-  const [newCategory, setNewCategory] = useState<'health' | 'learning' | 'mindfulness' | 'fitness' | 'craft' | 'general'>('health');
-  const [newFrequency, setNewFrequency] = useState<'daily' | 'weekdays' | 'weekly'>('daily');
+  const [newCategory, setNewCategory] = useState<HabitItem['category']>('health');
+  const [newFrequency, setNewFrequency] = useState<HabitItem['frequency']>('daily');
   const [newMinutes, setNewMinutes] = useState(20);
-  const [newTimeOfDay, setNewTimeOfDay] = useState<'morning' | 'afternoon' | 'evening' | 'any'>('morning');
+  const [newTimeOfDay, setNewTimeOfDay] = useState<NonNullable<HabitItem['preferredTimeOfDay']>>('morning');
 
   const filteredHabits = habits.filter(h => {
     if (filterCategory !== 'all' && h.category !== filterCategory) return false;
@@ -43,6 +46,7 @@ export function HabitMatrix({ habits, onToggleHabit, onAddHabit }: HabitMatrixPr
   });
 
   const completedCount = habits.filter(h => h.completedToday).length;
+  const allCompleted = habits.length > 0 && completedCount === habits.length;
 
   function handleCreateHabit(e: React.FormEvent) {
     e.preventDefault();
@@ -74,7 +78,7 @@ export function HabitMatrix({ habits, onToggleHabit, onAddHabit }: HabitMatrixPr
   }
 
   return (
-    <div className="glass-panel rounded-3xl p-6 border border-white/[0.08] space-y-6">
+    <div className="glass-panel rounded-3xl p-6 border border-white/[0.08] space-y-6 transition-all duration-300">
       {/* Top Header & Quick Counts */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -100,23 +104,52 @@ export function HabitMatrix({ habits, onToggleHabit, onAddHabit }: HabitMatrixPr
         </div>
       </div>
 
+      {/* Daily Keystone Mastery Banner if all complete */}
+      {allCompleted && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-teal-950/30 to-emerald-950/40 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <Award className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="font-semibold text-white">Daily Keystone Mastery Unlocked!</p>
+              <p className="text-[11px] text-emerald-300/80 font-mono">
+                All {habits.length} daily habits checked in. Identity capital reinforced for today.
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0">
+            100% EXECUTION
+          </span>
+        </div>
+      )}
+
       {/* Filter Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-white/[0.06]">
         {/* Category filters */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          {['all', 'health', 'learning', 'mindfulness', 'fitness'].map(cat => (
-            <button
-              key={cat}
-              onClick={() => setFilterCategory(cat)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-all ${
-                filterCategory === cat
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+          {[
+            { id: 'all', label: 'All' },
+            { id: 'health', label: 'Health' },
+            { id: 'learning', label: 'Learning' },
+            { id: 'mindfulness', label: 'Mindfulness' },
+            { id: 'fitness', label: 'Fitness' },
+          ].map(cat => {
+            const count = cat.id === 'all' ? habits.length : habits.filter(h => h.category === cat.id).length;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setFilterCategory(cat.id)}
+                className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-all ${
+                  filterCategory === cat.id
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
+              >
+                {cat.label} ({count})
+              </button>
+            );
+          })}
         </div>
 
         {/* Time of day filters */}
@@ -149,8 +182,17 @@ export function HabitMatrix({ habits, onToggleHabit, onAddHabit }: HabitMatrixPr
       {/* Habit Cards Grid */}
       <div className="space-y-3">
         {filteredHabits.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 text-sm font-mono border border-dashed border-white/[0.08] rounded-2xl">
-            No habits match the active filter criteria.
+          <div className="p-8 text-center text-slate-500 text-sm font-mono border border-dashed border-white/[0.08] rounded-2xl space-y-2">
+            <p>No habits match the active filter criteria.</p>
+            <button
+              onClick={() => {
+                setFilterCategory('all');
+                setFilterTime('all');
+              }}
+              className="text-xs font-mono text-emerald-400 hover:text-emerald-300 underline"
+            >
+              Reset filters
+            </button>
           </div>
         ) : (
           filteredHabits.map(habit => {
@@ -182,7 +224,7 @@ export function HabitMatrix({ habits, onToggleHabit, onAddHabit }: HabitMatrixPr
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`text-sm font-semibold tracking-tight transition-all ${
-                        isDone ? 'text-white line-through text-slate-400' : 'text-slate-100 group-hover:text-emerald-300'
+                        isDone ? 'line-through text-slate-400' : 'text-slate-100 group-hover:text-emerald-300'
                       }`}>
                         {habit.title}
                       </span>
@@ -213,8 +255,8 @@ export function HabitMatrix({ habits, onToggleHabit, onAddHabit }: HabitMatrixPr
                   </div>
                 </div>
 
-                {/* Right Streak Badge */}
-                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/[0.04]">
+                {/* Right Streak Badge & Delete Action */}
+                <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/[0.04]">
                   <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-mono font-semibold transition-all ${
                     isDone 
                       ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
@@ -223,6 +265,20 @@ export function HabitMatrix({ habits, onToggleHabit, onAddHabit }: HabitMatrixPr
                     <Flame className={`h-4 w-4 ${isDone ? 'text-amber-400 fill-amber-400 animate-bounce' : 'text-slate-500'}`} />
                     <span>{habit.streakCount} DAYS</span>
                   </div>
+
+                  {onDeleteHabit && (
+                    <button
+                      type="button"
+                      title="Delete Habit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteHabit(habit.id);
+                      }}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 opacity-60 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -274,7 +330,7 @@ export function HabitMatrix({ habits, onToggleHabit, onAddHabit }: HabitMatrixPr
                   <label className="text-xs font-mono text-slate-300 block mb-1">Category</label>
                   <select
                     value={newCategory}
-                    onChange={e => setNewCategory(e.target.value as any)}
+                    onChange={e => setNewCategory(e.target.value as HabitItem['category'])}
                     className="w-full bg-obsidian-800 border border-white/[0.1] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
                   >
                     <option value="health">Health & Vitality</option>
@@ -289,7 +345,7 @@ export function HabitMatrix({ habits, onToggleHabit, onAddHabit }: HabitMatrixPr
                   <label className="text-xs font-mono text-slate-300 block mb-1">Time of Day</label>
                   <select
                     value={newTimeOfDay}
-                    onChange={e => setNewTimeOfDay(e.target.value as any)}
+                    onChange={e => setNewTimeOfDay(e.target.value as NonNullable<HabitItem['preferredTimeOfDay']>)}
                     className="w-full bg-obsidian-800 border border-white/[0.1] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
                   >
                     <option value="morning">Morning (AM)</option>
@@ -305,7 +361,7 @@ export function HabitMatrix({ habits, onToggleHabit, onAddHabit }: HabitMatrixPr
                   <label className="text-xs font-mono text-slate-300 block mb-1">Frequency</label>
                   <select
                     value={newFrequency}
-                    onChange={e => setNewFrequency(e.target.value as any)}
+                    onChange={e => setNewFrequency(e.target.value as HabitItem['frequency'])}
                     className="w-full bg-obsidian-800 border border-white/[0.1] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
                   >
                     <option value="daily">Daily (7 days/wk)</option>

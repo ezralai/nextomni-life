@@ -14,6 +14,7 @@ import {
   Plus
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { StatementExtractionResult } from '@nextomni/types';
 
 interface InstitutionAccount {
   id: string;
@@ -35,7 +36,7 @@ const ACCOUNTS: InstitutionAccount[] = [
 export default function FinanceSuitePage() {
   const [accounts, setAccounts] = useState<InstitutionAccount[]>(ACCOUNTS);
   const [uploading, setUploading] = useState(false);
-  const [statementResult, setStatementResult] = useState<any>(null);
+  const [statementResult, setStatementResult] = useState<StatementExtractionResult | null>(null);
 
   const totalNetWorth = accounts.reduce((sum, a) => sum + a.balance, 0);
 
@@ -141,7 +142,7 @@ export default function FinanceSuitePage() {
 
           <div className="space-y-2 pt-2">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Itemized Records</h4>
-            {statementResult.transactions?.map((tx: any, idx: number) => (
+            {statementResult.transactions?.map((tx, idx: number) => (
               <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs">
                 <div className="flex items-center gap-2.5">
                   <span className="text-slate-500 font-mono">{tx.transaction_date}</span>

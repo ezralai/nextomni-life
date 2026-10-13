@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FocusSessionItem } from '@nextomni/types';
 import { soundscape, SoundscapeType } from '@/lib/soundscape-engine';
+import { triggerConfetti } from '@/lib/confetti';
 import { 
   Play, 
   Pause, 
@@ -15,16 +16,22 @@ import {
   Clock, 
   Radio,
   CheckCircle,
-  Sparkles
+  Sparkles,
+  Trash2,
+  Zap
 } from 'lucide-react';
 
 interface FocusFlowEngineProps {
   sessions: FocusSessionItem[];
   onLogSession: (session: FocusSessionItem) => void;
+  onDeleteSession?: (id: string) => void;
+  onClearSessions?: () => void;
 }
 
-export function FocusFlowEngine({ sessions, onLogSession }: FocusFlowEngineProps) {
-  const [mode, setMode] = useState<'pomodoro' | 'ultradian' | 'flow'>('pomodoro');
+type FocusMode = 'pomodoro' | 'ultradian' | 'deep_block' | 'flow';
+
+export function FocusFlowEngine({ sessions, onLogSession, onDeleteSession, onClearSessions }: FocusFlowEngineProps) {
+  const [mode, setMode] = useState<FocusMode>('pomodoro');
   const [isActive, setIsActive] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
@@ -37,19 +44,21 @@ export function FocusFlowEngine({ sessions, onLogSession }: FocusFlowEngineProps
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Default mode durations in seconds
-  const MODE_DURATIONS = {
+  const MODE_DURATIONS: Record<FocusMode, number> = {
     pomodoro: 25 * 60,
     ultradian: 52 * 60,
+    deep_block: 90 * 60,
     flow: 0,
   };
-  const BREAK_DURATIONS = {
+  const BREAK_DURATIONS: Record<FocusMode, number> = {
     pomodoro: 5 * 60,
     ultradian: 17 * 60,
+    deep_block: 20 * 60,
     flow: 5 * 60,
   };
 
   // Switch mode
-  function handleModeChange(newMode: 'pomodoro' | 'ultradian' | 'flow') {
+  function handleModeChange(newMode: FocusMode) {
     setIsActive(false);
     setIsBreak(false);
     setMode(newMode);
@@ -90,10 +99,17 @@ export function FocusFlowEngine({ sessions, onLogSession }: FocusFlowEngineProps
     setIsActive(false);
     if (!isBreak) {
       // Completed deep work session
-      const durationMins = mode === 'pomodoro' ? 25 : mode === 'ultradian' ? 52 : Math.round(flowSeconds / 60);
+      const durationMins = mode === 'pomodoro' 
+        ? 25 
+        : mode === 'ultradian' 
+        ? 52 
+        : mode === 'deep_block'
+        ? 90
+        : Math.max(1, Math.round(flowSeconds / 60));
+        
       const newSession: FocusSessionItem = {
         id: `fs-${Date.now()}`,
-        mode,
+        mode: mode === 'deep_block' ? 'ultradian' : mode,
         durationMinutes: durationMins,
         completedMinutes: durationMins,
         soundscapeType: selectedSoundscape,
@@ -104,6 +120,7 @@ export function FocusFlowEngine({ sessions, onLogSession }: FocusFlowEngineProps
         isCompleted: true,
       };
       onLogSession(newSession);
+      triggerConfetti(2500);
       setSessionNotes('');
       // Switch to break
       setIsBreak(true);
@@ -164,7 +181,7 @@ export function FocusFlowEngine({ sessions, onLogSession }: FocusFlowEngineProps
   const totalDuration = isBreak ? BREAK_DURATIONS[mode] : MODE_DURATIONS[mode];
   const progressPercent = mode === 'flow' 
     ? Math.min(100, (flowSeconds / 3600) * 100) 
-    : Math.min(100, ((totalDuration - secondsLeft) / totalDuration) * 100);
+    : Math.min(100, ((totalDuration - secondsLeft) / Math.max(1, totalDuration)) * 100);
 
   const displayMinutes = mode === 'flow' ? Math.floor(flowSeconds / 60) : Math.floor(secondsLeft / 60);
   const displaySeconds = mode === 'flow' ? flowSeconds % 60 : secondsLeft % 60;
@@ -173,7 +190,7 @@ export function FocusFlowEngine({ sessions, onLogSession }: FocusFlowEngineProps
   const totalFocusHoursLogged = Math.round(sessions.reduce((acc, s) => acc + (s.completedMinutes / 60), 0) * 10) / 10;
 
   return (
-    <div className="glass-panel rounded-3xl p-6 border border-white/[0.08] space-y-6">
+    <div className="glass-panel rounded-3xl p-6 border border-white/[0.08] space-y-6 transition-all duration-300">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -196,15 +213,16 @@ export function FocusFlowEngine({ sessions, onLogSession }: FocusFlowEngineProps
         {/* Left: Interactive Circular Timer */}
         <div className="lg:col-span-6 flex flex-col items-center justify-center p-6 bg-white/[0.02] rounded-3xl border border-white/[0.06] relative overflow-hidden">
           {/* Mode Selector Tabs */}
-          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-6 text-xs font-mono">
+          <div className="flex items-center gap-1 p-1 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-6 text-xs font-mono flex-wrap justify-center">
             {[
               { id: 'pomodoro', label: 'Pomodoro 25/5' },
               { id: 'ultradian', label: 'Ultradian 52/17' },
-              { id: 'flow', label: 'Open Flow State' },
+              { id: 'deep_block', label: 'Deep 90/20' },
+              { id: 'flow', label: 'Open Flow' },
             ].map(m => (
               <button
                 key={m.id}
-                onClick={() => handleModeChange(m.id as any)}
+                onClick={() => handleModeChange(m.id as FocusMode)}
                 className={`px-3 py-1.5 rounded-xl transition-all ${
                   mode === m.id
                     ? 'bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/30'
@@ -294,10 +312,12 @@ export function FocusFlowEngine({ sessions, onLogSession }: FocusFlowEngineProps
                 </span>
               </div>
               {isActive && selectedSoundscape !== 'none' && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-end gap-1 h-5 px-2">
                   <span className="h-3 w-1 bg-cyan-400 animate-pulse rounded-full" />
-                  <span className="h-4 w-1 bg-indigo-400 animate-bounce rounded-full" />
+                  <span className="h-5 w-1 bg-indigo-400 animate-bounce rounded-full" />
                   <span className="h-2 w-1 bg-cyan-400 animate-pulse rounded-full" />
+                  <span className="h-4 w-1 bg-emerald-400 animate-bounce rounded-full" />
+                  <span className="h-3 w-1 bg-cyan-400 animate-pulse rounded-full" />
                 </div>
               )}
             </div>
@@ -312,7 +332,7 @@ export function FocusFlowEngine({ sessions, onLogSession }: FocusFlowEngineProps
               ].map(s => (
                 <button
                   key={s.id}
-                  onClick={() => handleSoundscapeChange(s.id as any)}
+                  onClick={() => handleSoundscapeChange(s.id as SoundscapeType)}
                   className={`p-2.5 rounded-xl text-left border transition-all ${
                     selectedSoundscape === s.id
                       ? 'bg-cyan-950/30 border-cyan-500/40 text-cyan-300'
@@ -372,7 +392,7 @@ export function FocusFlowEngine({ sessions, onLogSession }: FocusFlowEngineProps
               value={sessionNotes}
               onChange={e => setSessionNotes(e.target.value)}
               placeholder="Jot down active needle mover or parking lot distractions..."
-              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none font-mono"
             />
           </div>
         </div>
@@ -380,33 +400,66 @@ export function FocusFlowEngine({ sessions, onLogSession }: FocusFlowEngineProps
 
       {/* Recent Completed Sessions Log */}
       <div className="pt-2 border-t border-white/[0.06] space-y-3">
-        <h4 className="text-xs font-mono text-slate-400 uppercase tracking-wider">
-          Telemetry Focus Session History
-        </h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {sessions.slice(0, 4).map(sess => (
-            <div
-              key={sess.id}
-              className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between text-xs"
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-mono text-slate-400 uppercase tracking-wider">
+            Telemetry Focus Session History ({sessions.length})
+          </h4>
+          {sessions.length > 0 && onClearSessions && (
+            <button
+              onClick={onClearSessions}
+              className="text-[11px] font-mono text-slate-500 hover:text-rose-400 transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400">
-                  <Clock className="h-4 w-4" />
+              Clear Log
+            </button>
+          )}
+        </div>
+
+        {sessions.length === 0 ? (
+          <div className="p-6 text-center text-xs font-mono text-slate-500 border border-dashed border-white/[0.06] rounded-xl">
+            No focus sessions logged yet. Start a timer block above to capture deep work telemetry.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {sessions.slice(0, 4).map(sess => (
+              <div
+                key={sess.id}
+                className="group p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] transition-all flex items-center justify-between text-xs"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0">
+                    <Clock className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white truncate max-w-[180px] sm:max-w-[220px]">
+                      {sess.notes || 'Deep Focus Session'}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-mono">
+                      {sess.mode.toUpperCase()} • {sess.completedMinutes} mins • {sess.courseId || 'General'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-white truncate max-w-[200px]">{sess.notes || 'Focus Session'}</p>
-                  <p className="text-[10px] text-slate-500 font-mono">
-                    {sess.mode.toUpperCase()} • {sess.completedMinutes} mins • {sess.courseId || 'General'}
-                  </p>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    COMPLETED
+                  </span>
+                  {onDeleteSession && (
+                    <button
+                      type="button"
+                      title="Delete session record"
+                      onClick={() => onDeleteSession(sess.id)}
+                      className="p-1 rounded text-slate-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
-              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                COMPLETED
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
