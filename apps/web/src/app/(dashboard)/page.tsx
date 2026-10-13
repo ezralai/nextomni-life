@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   GraduationCap, 
   Wallet, 
@@ -11,12 +11,27 @@ import {
   Calendar, 
   CheckCircle2,
   Clock,
-  ChevronRight
+  ChevronRight,
+  Flame
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { LifeStore } from '@/lib/life-store';
+import { HabitItem } from '@nextomni/types';
 
 export default function UnifiedCommandCenterPage() {
-  const [completedHabits, setCompletedHabits] = useState<number>(3);
+  const [habits, setHabits] = useState<HabitItem[]>([]);
+
+  useEffect(() => {
+    setHabits(LifeStore.getHabits());
+  }, []);
+
+  function handleToggleHabit(id: string) {
+    const updated = LifeStore.toggleHabit(id);
+    setHabits(updated);
+  }
+
+  const streak = habits.length > 0 ? Math.max(...habits.map(h => h.streakCount)) : 14;
+  const completedCount = habits.filter(h => h.completedToday).length;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -241,30 +256,36 @@ export default function UnifiedCommandCenterPage() {
                 <HeartPulse className="h-4 w-4" />
                 <span>NEXTOMNI LIFE • LIFEOS</span>
               </div>
-              <span className="text-xs font-mono text-amber-400">14-Day Keystone Streak</span>
+              <span className="text-xs font-mono text-amber-400 flex items-center gap-1">
+                <Flame className="h-3.5 w-3.5 fill-amber-400" />
+                <span>{streak}-Day Streak</span>
+              </span>
             </div>
             <h4 className="text-base font-bold text-white">Human Flourishing & Behavioral Habits</h4>
             <p className="text-xs text-slate-400 mt-1">
-              Synchronized with deep work soundscapes, circadian rhythm & life OKRs.
+              {completedCount} of {habits.length} habits executed today. Deep work & circadian aligned.
             </p>
           </div>
 
           <div className="space-y-2 my-4">
-            <button 
-              onClick={() => setCompletedHabits(prev => Math.min(prev + 1, 4))}
-              className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] text-left text-xs transition-all"
-            >
-              <span className="text-white font-medium">Morning Deep Coding Window</span>
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            </button>
-            <div className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left text-xs">
-              <span className="text-white font-medium">Circadian Sunlight Walk (20 min)</span>
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            </div>
-            <div className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left text-xs">
-              <span className="text-white font-medium">Active Recall Spaced Repetition</span>
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            </div>
+            {habits.slice(0, 3).map(habit => (
+              <button 
+                key={habit.id}
+                onClick={() => handleToggleHabit(habit.id)}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left text-xs transition-all ${
+                  habit.completedToday
+                    ? 'bg-emerald-950/20 border-emerald-500/30 text-white'
+                    : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.06] text-slate-300'
+                }`}
+              >
+                <span className={`font-medium truncate max-w-[200px] ${habit.completedToday ? 'line-through text-slate-400' : ''}`}>
+                  {habit.title}
+                </span>
+                <CheckCircle2 className={`h-4 w-4 shrink-0 transition-colors ${
+                  habit.completedToday ? 'text-emerald-400' : 'text-slate-600'
+                }`} />
+              </button>
+            ))}
           </div>
 
           <a href="/life" className="w-full py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-xs font-semibold text-center text-emerald-300 transition-all block">

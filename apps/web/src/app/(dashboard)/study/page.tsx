@@ -49,13 +49,20 @@ const FLASHCARDS = [
   }
 ];
 
+interface SyllabusDecompositionResult {
+  courseName: string;
+  extractedWeeks?: number;
+  keyMilestones: string[];
+  projectedStudyHours: string;
+}
+
 export default function StudySuitePage() {
   const [activeTab, setActiveTab] = useState<'timetable' | 'courses' | 'flashcards' | 'syllabus'>('timetable');
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [syllabusText, setSyllabusText] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
-  const [syllabusResult, setSyllabusResult] = useState<any>(null);
+  const [syllabusResult, setSyllabusResult] = useState<SyllabusDecompositionResult | null>(null);
 
   const card = FLASHCARDS[currentCardIndex];
 
@@ -330,7 +337,7 @@ export default function StudySuitePage() {
                 <span className="text-xs font-mono text-omni-cyan">{syllabusResult.projectedStudyHours}</span>
               </div>
               <ul className="space-y-1.5 text-xs text-slate-300">
-                {syllabusResult.keyMilestones.map((m: string, i: number) => (
+                {syllabusResult.keyMilestones.map((m, i: number) => (
                   <li key={i} className="flex items-center gap-2">
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                     <span>{m}</span>
